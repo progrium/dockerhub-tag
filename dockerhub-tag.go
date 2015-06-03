@@ -51,11 +51,11 @@ func NewClient(username, password string) (*Client, error) {
 	return c, nil
 }
 
-// AddTag creates a new automated build. The branch argument can be any git reference:
+// AddTag creates a new automated build. The gitTag argument can be any git reference:
 // tag or branch.  Repo argument defines the full name of the image: myslef/myrepo.
 // Location is the Dockerfile path inside of the repo. Use "/" if it is
-// placed in root. The tagName argument is used for image name: myself/myrepo:tagName
-func (c *Client) AddTag(repo, tagName, branch, location string) error {
+// placed in root. The dockerTag argument is used for image name: myself/myrepo:dockerTag
+func (c *Client) AddTag(repo, dockerTag, gitTag, location string) error {
 
 	repoUrl := "https://registry.hub.docker.com/u/" + repo + "/"
 	err := c.br.Open(repoUrl)
@@ -101,10 +101,10 @@ func (c *Client) AddTag(repo, tagName, branch, location string) error {
 	})
 	newId, _ := c.br.Find("#id_trusted_builds-TOTAL_FORMS").Attr("value")
 	data := map[string]string{
-		"source_type":         "Branch",
-		"source_name":         branch,
+		"source_type":         "Tag",
+		"source_name":         gitTag,
 		"dockerfile_location": location,
-		"name":                tagName,
+		"name":                dockerTag,
 	}
 	for k, v := range data {
 		vals.Set("trusted_builds-"+newId+"-"+k, v)
@@ -127,14 +127,14 @@ func (c *Client) AddTag(repo, tagName, branch, location string) error {
 	if err != nil {
 		return fmt.Errorf("Posting new tag failed, error:%s", err)
 	}
-	log.Info("Tag created: %s:%s", repo, tagName)
+	log.Info("Tag created: %s:%s", repo, dockerTag)
 	return nil
 }
 
 func main() {
 	usage := `Usage:
-  dockerhub-tag create <repo> <tagname> <branch> <location>   [--verbose|-v]
-  dockerhub-tag delete <repo> <tagname>                       [--verbose|-v]
+  dockerhub-tag create <repo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag delete <repo> <dockerTag>                       [--verbose|-v]
 
 Options:
   -h --help         this message
@@ -155,8 +155,8 @@ Options:
 	if args["create"].(bool) {
 		err = dhc.AddTag(
 			args["<repo>"].(string),
-			args["<tagname>"].(string),
-			args["<branch>"].(string),
+			args["<dockerTag>"].(string),
+			args["<gitTag>"].(string),
 			args["<location>"].(string),
 		)
 		if err != nil {
