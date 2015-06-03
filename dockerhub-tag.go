@@ -131,6 +131,14 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 	return nil
 }
 
+// DeleteTag deletes an automated build. Please note that it doesn't
+// influences existing image tags. So if you delete the v1 automated
+// build, than myrepo/myimage:v1 docker image will remain, only it
+// will not be built again by Dockerhub.
+func (c *Client) DeleteTag(dockerRepo, dockerTag string) error {
+	return nil
+}
+
 func main() {
 	usage := `Usage:
   dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
@@ -160,8 +168,19 @@ Options:
 			args["<location>"].(string),
 		)
 		if err != nil {
-			panic(err)
+			log.Fatal("Cloudn't create tag", err)
 		}
+	}
+
+	if args["delete"].(bool) {
+		err = dhc.DeleteTag(
+			args["<repo>"].(string),
+			args["<tagname>"].(string),
+		)
+		if err != nil {
+			log.Fatal("Cloudn't delete tag", err)
+		}
+
 	}
 
 }
