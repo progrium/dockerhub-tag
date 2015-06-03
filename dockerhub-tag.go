@@ -127,7 +127,7 @@ func (c *Client) AddTag(repo, tagName, branch, location string) error {
 	if err != nil {
 		return fmt.Errorf("Posting new tag failed, error:%s", err)
 	}
-	//fm.Submit()
+	log.Info("Tag created: %s:%s", repo, tagName)
 	return nil
 }
 
