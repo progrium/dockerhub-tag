@@ -92,14 +92,28 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 		}
 		vals.Set(name, value)
 	})
+
 	selects := c.br.Find("#mainform select")
+	log.Debug("trusted_builds:")
+	formLines := 0
 	selects.Each(func(i int, s *goquery.Selection) {
+		formLines++
 		name, _ := s.Attr("name")
 		selected := s.Find("option[selected=selected]")
 		value, _ := selected.Attr("value")
+
+		prefix := name[0 : len(name)-len("source_type")]
+		sourceName := vals.Get(prefix + "source_name")
+		hubName := vals.Get(prefix + "name")
 		vals.Set(name, value)
+		if value == "Tag" {
+			log.Debugf("  %s [delete] hubtag:%s  git:%s ", prefix, hubName, sourceName)
+			vals.Set(prefix+"DELETE", "on")
+		} else {
+			log.Debugf("  %s [keep]  hubtag:%s  git:%s ", prefix, hubName, sourceName)
+		}
 	})
-	newId, _ := c.br.Find("#id_trusted_builds-TOTAL_FORMS").Attr("value")
+	//newId, _ := c.br.Find("#id_trusted_builds-TOTAL_FORMS").Attr("value")
 	data := map[string]string{
 		"source_type":         "Tag",
 		"source_name":         gitTag,
@@ -107,12 +121,10 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 		"name":                dockerTag,
 	}
 	for k, v := range data {
-		vals.Set("trusted_builds-"+newId+"-"+k, v)
+		vals.Set("trusted_builds-"+strconv.Itoa(formLines)+"-"+k, v)
 	}
-	i, err := strconv.ParseInt(newId, 10, 0)
-	i = i + 1
-	vals.Set("trusted_builds-TOTAL_FORMS", strconv.Itoa(int(i)))
-	log.Debug("trusted_build form fields:")
+	vals.Set("trusted_builds-TOTAL_FORMS", strconv.Itoa(formLines+1))
+	log.Debug("Submitting trusted_build:")
 	for k, v := range vals {
 		log.Debugf("  %s=%s", k, v)
 	}
@@ -127,7 +139,7 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 	if err != nil {
 		return fmt.Errorf("Posting new tag failed, error:%s", err)
 	}
-	log.Info("Tag created: %s:%s", dockerRepo, dockerTag)
+	log.Infof("Tag created: %s:%s", dockerRepo, dockerTag)
 	return nil
 }
 
