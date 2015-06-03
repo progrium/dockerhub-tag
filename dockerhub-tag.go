@@ -52,12 +52,12 @@ func NewClient(username, password string) (*Client, error) {
 }
 
 // AddTag creates a new automated build. The gitTag argument can be any git reference:
-// tag or branch.  Repo argument defines the full name of the image: myslef/myrepo.
+// tag or branch.  The dockerRepo argument defines the full name of the image: myslef/myrepo.
 // Location is the Dockerfile path inside of the repo. Use "/" if it is
 // placed in root. The dockerTag argument is used for image name: myself/myrepo:dockerTag
-func (c *Client) AddTag(repo, dockerTag, gitTag, location string) error {
+func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 
-	repoUrl := "https://registry.hub.docker.com/u/" + repo + "/"
+	repoUrl := "https://registry.hub.docker.com/u/" + dockerRepo + "/"
 	err := c.br.Open(repoUrl)
 	if err != nil {
 		return fmt.Errorf("Couldn't open repo page:%s, error:%s", repoUrl, err)
@@ -127,14 +127,14 @@ func (c *Client) AddTag(repo, dockerTag, gitTag, location string) error {
 	if err != nil {
 		return fmt.Errorf("Posting new tag failed, error:%s", err)
 	}
-	log.Info("Tag created: %s:%s", repo, dockerTag)
+	log.Info("Tag created: %s:%s", dockerRepo, dockerTag)
 	return nil
 }
 
 func main() {
 	usage := `Usage:
-  dockerhub-tag create <repo> <dockerTag> <gitTag> <location>   [--verbose|-v]
-  dockerhub-tag delete <repo> <dockerTag>                       [--verbose|-v]
+  dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag delete <dockerRepo> <dockerTag>                       [--verbose|-v]
 
 Options:
   -h --help         this message
@@ -154,7 +154,7 @@ Options:
 
 	if args["create"].(bool) {
 		err = dhc.AddTag(
-			args["<repo>"].(string),
+			args["<dockerRepo>"].(string),
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
 			args["<location>"].(string),
