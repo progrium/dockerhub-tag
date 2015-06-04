@@ -47,8 +47,8 @@ DOCKERFILE_LOCATION=/
 VERSION=$(shell cat VERSION)
 
 deps:
-	go get -u github.com/progrium/gh-release/...
-	go get -u github.com/progrium/dockerhub-tag
+	go get github.com/progrium/gh-release/...
+	go get github.com/progrium/dockerhub-tag
 
 release:
 	gh-release create $(GITHUB_REPO) $(VERSION)
