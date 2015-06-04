@@ -1,9 +1,12 @@
-DOCKERHUB_REPO=lalyos/dockerhub-tag
+DOCKERHUB_REPO=progrium/dockerhub-tag
+GITHUB_REPO=progrium/dockerhub-tag
 DOCKERFILE_LOCATION=/
-GIT_TAG=$(shell git describe --tags)
+VERSION=$(shell cat VERSION)
 
 deps:
-	go get github.com/lalyos/dockerhub-tag
+	go get -u github.com/progrium/gh-release/...
+	go get -u github.com/progrium/dockerhub-tag
 
-docker-tag:
-	dockerhub-tag create $(DOCKERHUB_REPO) $(GIT_TAG) $(GIT_TAG) $(DOCKERFILE_LOCATION)
+release:
+	gh-release create $(GITHUB_REPO) $(VERSION)
+	dockerhub-tag create $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
