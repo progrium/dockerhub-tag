@@ -1,0 +1,13 @@
+dependencies:
+  pre:
+    - make deps
+
+test:
+  override:
+    - true
+
+deployment:
+  release:
+    branch: release
+    commands:
+      - make release
