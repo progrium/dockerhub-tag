@@ -1,5 +1,5 @@
-DOCKERHUB_REPO=lalyos/dockerhub-tag
-GITHUB_REPO=progrium/dockerhub-tag
+DOCKERHUB_REPO=progrium/dockerhub-tag
+GITHUB_REPO=gliderlabs/dockerhub-tag
 DOCKERFILE_LOCATION=/
 VERSION=$(shell cat VERSION)
 
