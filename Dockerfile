@@ -1,4 +1,4 @@
 FROM alpine
 
-ENV VERSION 0.1.3
+ENV VERSION 0.1.4
 CMD echo DockerHub ImageTest version: $VERSION
