@@ -9,4 +9,4 @@ deps:
 
 release:
 	gh-release create $(GITHUB_REPO) $(VERSION)
-	dockerhub-tag create $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
+	dockerhub-tag create $(DOCKERHUB_REPO) $(VERSION) v$(VERSION) $(DOCKERFILE_LOCATION)
