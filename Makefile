@@ -1,4 +1,4 @@
-DOCKERHUB_REPO=progrium/dockerhub-tag
+DOCKERHUB_REPO=lalyos/dockerhub-tag
 GITHUB_REPO=progrium/dockerhub-tag
 DOCKERFILE_LOCATION=/
 VERSION=$(shell cat VERSION)
