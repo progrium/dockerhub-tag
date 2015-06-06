@@ -18,7 +18,7 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
-// A Clinet provides access to manage automated builds on https://hub.docker.com.
+// Client provides access to manage automated builds on https://hub.docker.com.
 type Client struct {
 	br *browser.Browser
 }
@@ -35,9 +35,9 @@ func NewClient(username, password string) (*Client, error) {
 	fm, err := c.br.Form("#form-login")
 	if err != nil {
 		return nil, err
-	} else {
-		log.Debug("Login form found")
 	}
+
+	log.Debug("Login form found")
 
 	fm.Input("username", username)
 	fm.Input("password", password)
@@ -45,9 +45,8 @@ func NewClient(username, password string) (*Client, error) {
 
 	if err != nil {
 		return nil, err
-	} else {
-		log.Debug("Login success")
 	}
+	log.Debug("Login success")
 	return c, nil
 }
 
@@ -57,13 +56,13 @@ func NewClient(username, password string) (*Client, error) {
 // placed in root. The dockerTag argument is used for image name: myself/myrepo:dockerTag
 func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 
-	repoUrl := "https://registry.hub.docker.com/u/" + dockerRepo + "/"
-	err := c.br.Open(repoUrl)
+	repoURL := "https://registry.hub.docker.com/u/" + dockerRepo + "/"
+	err := c.br.Open(repoURL)
 	if err != nil {
-		return fmt.Errorf("Couldn't open repo page:%s, error:%s", repoUrl, err)
-	} else {
-		log.Debug("Repo page opened successfully:", repoUrl)
+		return fmt.Errorf("Couldn't open repo page:%s, error:%s", repoURL, err)
 	}
+	log.Debug("Repo page opened successfully:", repoURL)
+
 	err = c.br.Click("ul.nav-tabs li:nth-child(3) a")
 	if err != nil {
 		return fmt.Errorf("Couldn't navigate to 'Build details' tab! Is it an automated image? error:%s", err)
@@ -77,8 +76,8 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 	vals := url.Values{}
 	inputs := c.br.Find("#mainform input")
 	inputs.Each(func(i int, s *goquery.Selection) {
-		type_, _ := s.Attr("type")
-		if type_ == "submit" {
+		t, _ := s.Attr("type")
+		if t == "submit" {
 			return
 		}
 		name, _ := s.Attr("name")
