@@ -6,14 +6,14 @@
 
 ### Added
 
-- single command: Keep one single **Tag** while leaving all  **Branch** untouched.
-- list command: diplays all automated build in a table format
+- `list` command: diplays all automated builds in a table format
+- `add` command: simple adds a new git tag based automated build, without deleting any other automated build.
 
 ### Removed
 
 ### Changed
 
-- create command: doesn’t deletes other tags (use `single` for that behaviour)
+- `create` command is renamed to `set`
 
 ## [v0.1.6] - 2015-06-05
 

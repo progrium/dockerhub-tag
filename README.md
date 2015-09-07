@@ -14,21 +14,21 @@ so it can be built easily integrated into any CI server/process.
 ```
 Usage:
   dockerhub-tag list   <dockerRepo>                                   [--verbose|-v]
-  dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
-  dockerhub-tag single <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag add    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag set    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
   dockerhub-tag delete <dockerRepo> <dockerTag>                       [--verbose|-v]
 ```
 
 - **list** : Lists all automated buils in a table format.
-- **create** : Creates a new automated build pointing to a git **Tag** reference
-- **single** : Creates a new automated build pointing to a git **Tag** reference, while deletes all other **Tag**. (Branches are untouched)
+- **add** : Creates a new automated build pointing to a git **Tag** reference
+- **set** : Creates a new automated build pointing to a git **Tag** reference, while deletes all other **Tag**. (Branches are untouched)
 - **delete** : Deletes a Tag by name.
 
 ## Authentication
 
 Via environment variables
 ```
-export DOCKERHUB_USERNAME=lalyos
+export DOCKERHUB_USERNAME=yourname
 export DOCKERHUB_PASSWORD=Id0ntt3lU
 ```
 

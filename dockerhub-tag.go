@@ -195,7 +195,7 @@ func (c *Client) AddTag(dockerTag, gitTag, location string) error {
 	}
 	fatal(err)
 
-	log.Infof("Tag created: %s", data)
+	log.Infof("New automated build created: %s:%s git-tag: %s Dockerfile-loc: %s", c.repo, dockerTag, gitTag, location)
 	return nil
 }
 
@@ -240,8 +240,8 @@ func main() {
 
 Usage:
   dockerhub-tag list   <dockerRepo>                                   [--verbose|-v]
-  dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
-  dockerhub-tag single <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag add    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag set    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
   dockerhub-tag delete <dockerRepo> <dockerTag>                       [--verbose|-v]
 
 Options:
@@ -261,7 +261,7 @@ Options:
 		args["<dockerRepo>"].(string),
 	)
 
-	if args["create"].(bool) {
+	if args["add"].(bool) {
 		err = dhc.AddTag(
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
@@ -272,7 +272,7 @@ Options:
 		}
 	}
 
-	if args["single"].(bool) {
+	if args["set"].(bool) {
 		err = dhc.AddSingleTag(
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
