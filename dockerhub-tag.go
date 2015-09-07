@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"strconv"
@@ -17,37 +16,14 @@ import (
 	"github.com/docopt/docopt-go"
 )
 
-type debugTransport struct {
-	transport http.RoundTripper
-}
-
-func NewDebugTransport() *debugTransport {
-	return &debugTransport{
-		transport: http.DefaultTransport,
-	}
-}
-
-func (d *debugTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	if os.Getenv("DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "\n=====> %s\n", r.URL)
-		dump, _ := httputil.DumpRequest(r, true)
-		fmt.Println(string(dump[:len(dump)]))
-	}
-	resp, err := d.transport.RoundTrip(r)
-	return resp, err
-}
-
 func init() {
 	log.SetOutput(os.Stderr)
 	log.SetLevel(log.InfoLevel)
-
-	http.DefaultTransport = NewDebugTransport()
 }
 
 func fatal(err error) {
 	if err != nil {
 		log.Errorln(err)
-		//fmt.Println("!!", err)
 		os.Exit(1)
 	}
 }
