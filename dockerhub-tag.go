@@ -90,12 +90,12 @@ func (c *Client) eachTagAtPage(page int, f func(id int, name, sourceType, source
 	if data.Next != "" {
 		nextUrl, err := url.Parse(data.Next)
 		if err != nil {
-			log.Warning("Pagination found. Coudnt parse NEXT url", data.Next)
+			log.Warning("Pagination found. Coudnt parse next url:", data.Next)
 		}
 		nextPage := nextUrl.Query().Get("page")
 		p, err := strconv.Atoi(nextPage)
 		if err != nil {
-			log.Warning("Pagination found. Coudnt get next PAGE", data.Next)
+			log.Warning("Pagination found. Coudnt get page query param:", data.Next)
 		}
 		c.eachTagAtPage(p, f)
 
@@ -203,7 +203,7 @@ func (c *Client) deleteById(tagId int) error {
 	resp, err := c.cli.Do(req)
 	fatal(err)
 
-	log.Info("Delete resp:", resp.StatusCode)
+	log.Debug("Delete resp:", resp.StatusCode)
 	if resp.StatusCode != 204 {
 		return errors.New(resp.Status)
 	}
