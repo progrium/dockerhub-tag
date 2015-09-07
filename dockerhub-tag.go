@@ -56,6 +56,7 @@ func fatal(err error) {
 type Client struct {
 	token string
 	repo  string
+	cli   *http.Client
 }
 
 // NewClient creates a Client to https://hub.docker.com imitating a
@@ -63,10 +64,11 @@ type Client struct {
 func NewClient(username, password, repository string) (*Client, error) {
 	c := &Client{
 		repo: repository,
+		cli:  new(http.Client),
 	}
 
 	login := fmt.Sprintf(`{"username": "%s", "password":"%s"}`, username, password)
-	resp, err := http.Post("https://hub.docker.com/v2/users/login",
+	resp, err := c.cli.Post("https://hub.docker.com/v2/users/login",
 		"application/json", strings.NewReader(login))
 	fatal(err)
 
@@ -86,8 +88,8 @@ func (c *Client) eachTag(f func(id int, name, sourceType, sourceName, dockerfile
 }
 
 func (c *Client) eachTagAtPage(page int, f func(id int, name, sourceType, sourceName, dockerfileLoc string)) {
-	client := new(http.Client)
-	resp, err := client.Get(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/?page=%d", c.repo, page))
+
+	resp, err := c.cli.Get(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/?page=%d", c.repo, page))
 	fatal(err)
 	defer resp.Body.Close()
 	list, err := ioutil.ReadAll(resp.Body)
@@ -179,7 +181,6 @@ func (c *Client) AddTag(dockerTag, gitTag, location string) error {
 	tagJson, err := json.Marshal(&data)
 	fatal(err)
 
-	client := new(http.Client)
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/", c.repo),
@@ -188,7 +189,7 @@ func (c *Client) AddTag(dockerTag, gitTag, location string) error {
 	fatal(err)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("JWT %s", c.token))
-	resp, err := client.Do(req)
+	resp, err := c.cli.Do(req)
 	if resp.StatusCode != 201 {
 		log.Error("Couldn't create tag:", resp.Status)
 	}
@@ -215,7 +216,6 @@ func (c *Client) DeleteTag(dockerTag string) error {
 
 func (c *Client) deleteById(tagId int) error {
 
-	client := new(http.Client)
 	req, err := http.NewRequest(
 		"DELETE",
 		fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/%d/", c.repo, tagId),
@@ -224,7 +224,7 @@ func (c *Client) deleteById(tagId int) error {
 	fatal(err)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", fmt.Sprintf("JWT %s", c.token))
-	resp, err := client.Do(req)
+	resp, err := c.cli.Do(req)
 	fatal(err)
 
 	log.Info("Delete resp:", resp.StatusCode)
