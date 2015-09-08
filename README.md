@@ -64,7 +64,7 @@ deps:
 
 release:
 	gh-release create $(GITHUB_REPO) $(VERSION)
-	dockerhub-tag single $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
+	dockerhub-tag set $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
 ```
 ## CircleCI
 
