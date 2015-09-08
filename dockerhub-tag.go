@@ -16,6 +16,8 @@ import (
 	"github.com/docopt/docopt-go"
 )
 
+var Version string = "dev"
+
 func init() {
 	log.SetOutput(os.Stderr)
 	log.SetLevel(log.InfoLevel)
@@ -224,7 +226,7 @@ Options:
   -h --help         this message
   -v --verbose      verbose mode`
 
-	ver := fmt.Sprintf("DockerHub Tagger: 0.1.0")
+	ver := fmt.Sprintf("DockerHub Tagger: %s", Version)
 	args, _ := docopt.Parse(usage, nil, true, ver, false)
 
 	if args["--verbose"].(bool) {
