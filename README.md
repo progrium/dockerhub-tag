@@ -2,21 +2,33 @@ Did you ever find yourself creating automated builds by hand on http://hub.docke
 Why is it called *automated* build, if you can’t create a new one automatically? This project helps to
 do the missing step.
 
+There are plenty of articles describing a process where a central continuous build server (jenkins/travis/circleCI) builds
+the image locally, and than **pushes** it to DockerHub. The end result of such a process **is not an automated build**. 
+Docker images which aren’t automated builds, considered a security risk and therefore should be voided.
+
+Please note that the main purpose of this tool is: to be able to create a new **automated** DockerHub build from cli,
+so it can be built easily integrated into any CI server/process.
 
 ## Usage
 
 ```
 Usage:
-  dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag list   <dockerRepo>                                   [--verbose|-v]
+  dockerhub-tag add    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag set    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag delete <dockerRepo> <dockerTag>                       [--verbose|-v]
 ```
 
-It will create a new
+- **list** : Lists all automated buils in a table format.
+- **add** : Creates a new automated build pointing to a git **Tag** reference
+- **set** : Creates a new automated build pointing to a git **Tag** reference, while deletes all other **Tag**. (Branches are untouched)
+- **delete** : Deletes a Tag by name.
 
 ## Authentication
 
 Via environment variables
 ```
-export DOCKERHUB_USERNAME=lalyos
+export DOCKERHUB_USERNAME=yourname
 export DOCKERHUB_PASSWORD=Id0ntt3lU
 ```
 
@@ -52,7 +64,7 @@ deps:
 
 release:
 	gh-release create $(GITHUB_REPO) $(VERSION)
-	dockerhub-tag create $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
+	dockerhub-tag single $(DOCKERHUB_REPO) $(VERSION) $(VERSION) $(DOCKERFILE_LOCATION)
 ```
 ## CircleCI
 
@@ -71,7 +83,7 @@ Please remember to set env vars at **Project Settings / Environment variables**:
 
 ## tl;dr
 
-Unfortunately non of the registry api versions gives you access to automated builds.§
+Unfortunately non of the registry api versions gives you access to automated builds.
 - [registry api v1](https://docs.docker.com/reference/api/registry_api/)
 - [registry api v2](https://docs.docker.com/registry/spec/api/)
 

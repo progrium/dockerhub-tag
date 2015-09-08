@@ -1,16 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docopt/docopt-go"
-	"github.com/headzoo/surf"
-	"github.com/headzoo/surf/browser"
 )
 
 func init() {
@@ -18,127 +21,157 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
+func fatal(err error) {
+	if err != nil {
+		log.Errorln(err)
+		os.Exit(1)
+	}
+}
+
 // Client provides access to manage automated builds on https://hub.docker.com.
 type Client struct {
-	br *browser.Browser
+	token string
+	repo  string
+	cli   *http.Client
 }
 
 // NewClient creates a Client to https://hub.docker.com imitating a
 // user logging in, with a real browser.
-func NewClient(username, password string) (*Client, error) {
-	c := &Client{}
-	c.br = surf.NewBrowser()
-	err := c.br.Open("https://hub.docker.com/account/login/")
-	if err != nil {
-		return nil, err
-	}
-	fm, err := c.br.Form("#form-login")
-	if err != nil {
-		return nil, err
+func NewClient(username, password, repository string) (*Client, error) {
+	c := &Client{
+		repo: repository,
+		cli:  new(http.Client),
 	}
 
-	log.Debug("Login form found")
+	login := fmt.Sprintf(`{"username": "%s", "password":"%s"}`, username, password)
+	resp, err := c.cli.Post("https://hub.docker.com/v2/users/login",
+		"application/json", strings.NewReader(login))
+	fatal(err)
 
-	fm.Input("username", username)
-	fm.Input("password", password)
-	err = fm.Submit()
+	defer resp.Body.Close()
+	dec := json.NewDecoder(resp.Body)
+	var token map[string]string
+	fatal(dec.Decode(&token))
 
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("Login success")
+	c.token = token["token"]
+	log.Debug("JWT:", c.token)
+
 	return c, nil
 }
 
-// AddTag creates a new automated build. The gitTag argument can be any git reference:
-// tag or branch.  The dockerRepo argument defines the full name of the image: myslef/myrepo.
-// Location is the Dockerfile path inside of the repo. Use "/" if it is
-// placed in root. The dockerTag argument is used for image name: myself/myrepo:dockerTag
-func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
+func (c *Client) eachTag(f func(id int, name, sourceType, sourceName, dockerfileLoc string)) {
+	c.eachTagAtPage(1, f)
+}
 
-	repoURL := "https://registry.hub.docker.com/u/" + dockerRepo + "/"
-	err := c.br.Open(repoURL)
-	if err != nil {
-		return fmt.Errorf("Couldn't open repo page:%s, error:%s", repoURL, err)
-	}
-	log.Debug("Repo page opened successfully:", repoURL)
+func (c *Client) eachTagAtPage(page int, f func(id int, name, sourceType, sourceName, dockerfileLoc string)) {
 
-	err = c.br.Click("ul.nav-tabs li:nth-child(3) a")
-	if err != nil {
-		return fmt.Errorf("Couldn't navigate to 'Build details' tab! Is it an automated image? error:%s", err)
-	}
-	//fmt.Println(c.br.Body())
-	err = c.br.Click("#repo-info-tab div.repository a:first-child")
-	if err != nil {
-		return fmt.Errorf("Couldn't navigate to 'Edit Build Details' error:%s", err)
+	resp, err := c.cli.Get(fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/?page=%d", c.repo, page))
+	fatal(err)
+	defer resp.Body.Close()
+	list, err := ioutil.ReadAll(resp.Body)
+	fatal(err)
+
+	var data struct {
+		Count    int
+		Next     string
+		Previous string
+		Results  []struct {
+			Id                  int
+			Name                string
+			Dockerfile_location string
+			Source_name         string
+			Source_type         string
+		}
 	}
 
-	vals := url.Values{}
-	inputs := c.br.Find("#mainform input")
-	inputs.Each(func(i int, s *goquery.Selection) {
-		t, _ := s.Attr("type")
-		if t == "submit" {
-			return
+	err = json.Unmarshal(list, &data)
+	fatal(err)
+
+	if data.Next != "" {
+		nextUrl, err := url.Parse(data.Next)
+		if err != nil {
+			log.Warning("Pagination found. Coudnt parse next url:", data.Next)
 		}
-		name, _ := s.Attr("name")
-		value, _ := s.Attr("value")
-		checked, _ := s.Attr("checked")
-		if checked == "checked" {
-			value = "on"
+		nextPage := nextUrl.Query().Get("page")
+		p, err := strconv.Atoi(nextPage)
+		if err != nil {
+			log.Warning("Pagination found. Coudnt get page query param:", data.Next)
 		}
-		if value == "" {
-			return
-		}
-		vals.Set(name, value)
+		c.eachTagAtPage(p, f)
+
+		log.Debug("Pagination found, next page:", p)
+
+	}
+	log.Debug("Number of automated builds:", data.Count)
+	for _, tag := range data.Results {
+		f(tag.Id, tag.Name, tag.Source_type, tag.Source_name, tag.Dockerfile_location)
+	}
+
+}
+
+func (c *Client) ListAll() {
+	fmt.Printf("%7s %-30s %-10s %-6s %-10s %-10s\n", "ID", "REPOSITORY", "TAG", "TYPE", "GIT_REF", "DOCKERFILE")
+	c.eachTag(func(id int, name, sourceType, sourceName, dockerfileLoc string) {
+		fmt.Printf("%7d %-30s %-10s %-6s %-10s %-10s\n", id, c.repo, name, sourceType, sourceName, dockerfileLoc)
 	})
+}
 
-	selects := c.br.Find("#mainform select")
-	log.Debug("trusted_builds:")
-	formLines := 0
-	selects.Each(func(i int, s *goquery.Selection) {
-		formLines++
-		name, _ := s.Attr("name")
-		selected := s.Find("option[selected=selected]")
-		value, _ := selected.Attr("value")
+func (c *Client) deleteAllTag() {
 
-		prefix := name[0 : len(name)-len("source_type")]
-		sourceName := vals.Get(prefix + "source_name")
-		hubName := vals.Get(prefix + "name")
-		vals.Set(name, value)
-		if value == "Tag" {
-			log.Debugf("  %s [delete] hubtag:%s  git:%s ", prefix, hubName, sourceName)
-			vals.Set(prefix+"DELETE", "on")
+	c.eachTag(func(id int, name, sourceType, sourceName, dockerfileLoc string) {
+		if sourceType == "Branch" {
+			log.Debug("Ignore branch:", name)
 		} else {
-			log.Debugf("  %s [keep]  hubtag:%s  git:%s ", prefix, hubName, sourceName)
+			log.Infof("deleting: %8d %-20s", id, name)
+			err := c.deleteById(id)
+			if err != nil {
+				log.Errorf("Unable to delete tag %s: %s", name, err)
+			}
 		}
+
 	})
-	//newId, _ := c.br.Find("#id_trusted_builds-TOTAL_FORMS").Attr("value")
+
+}
+
+func (c *Client) AddSingleTag(dockerTag, gitTag, location string) error {
+	c.deleteAllTag()
+	return c.AddTag(dockerTag, gitTag, location)
+}
+
+// AddTag creates a new automated build. The gitTag argument can be any git reference:
+// tag or branch. Location is the Dockerfile path inside of the repo. Use "/" if it is
+// placed in root. The dockerTag argument is used for image name: myself/myrepo:dockerTag
+func (c *Client) AddTag(dockerTag, gitTag, location string) error {
+
+	repo := strings.Split(c.repo, "/")
 	data := map[string]string{
 		"source_type":         "Tag",
 		"source_name":         gitTag,
 		"dockerfile_location": location,
 		"name":                dockerTag,
-	}
-	for k, v := range data {
-		vals.Set("trusted_builds-"+strconv.Itoa(formLines)+"-"+k, v)
-	}
-	vals.Set("trusted_builds-TOTAL_FORMS", strconv.Itoa(formLines+1))
-	log.Debug("Submitting trusted_build:")
-	for k, v := range vals {
-		log.Debugf("  %s=%s", k, v)
+		"isNew":               "true",
+		"namespace":           repo[0],
+		"repoName":            repo[1],
 	}
 
-	log.Debug("Cookies")
-	for _, v := range c.br.SiteCookies() {
-		log.Debugf("  %s: %s", v.Name, v.Value)
+	tagJson, err := json.Marshal(&data)
+	fatal(err)
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/", c.repo),
+		bytes.NewBuffer(tagJson),
+	)
+	fatal(err)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("JWT %s", c.token))
+	resp, err := c.cli.Do(req)
+	if resp.StatusCode != 201 {
+		log.Error("Couldn't create tag:", resp.Status)
 	}
-	//time.Sleep(1 * time.Second)
-	err = c.br.PostForm(c.br.Url().String(), vals)
-	//fm, err = c.br.Form("#mainform")
-	if err != nil {
-		return fmt.Errorf("Posting new tag failed, error:%s", err)
-	}
-	log.Infof("Tag created: %s:%s", dockerRepo, dockerTag)
+	fatal(err)
+
+	log.Infof("New automated build created: %s:%s git-tag: %s Dockerfile-loc: %s", c.repo, dockerTag, gitTag, location)
 	return nil
 }
 
@@ -146,13 +179,45 @@ func (c *Client) AddTag(dockerRepo, dockerTag, gitTag, location string) error {
 // influences existing image tags. So if you delete the v1 automated
 // build, than myrepo/myimage:v1 docker image will remain, only it
 // will not be built again by Dockerhub.
-func (c *Client) DeleteTag(dockerRepo, dockerTag string) error {
+func (c *Client) DeleteTag(dockerTag string) error {
+	c.eachTag(func(id int, name, sourceType, sourceName, dockerfileLoc string) {
+		if name == dockerTag {
+			log.Infof("Deleting [%d] DockerHub: %s:%s git-ref:%s/%s dockerfile loc: %s\n", id, c.repo, name, sourceType, sourceName, dockerfileLoc)
+			c.deleteById(id)
+		}
+	})
+
+	return nil
+}
+
+func (c *Client) deleteById(tagId int) error {
+
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/tags/%d/", c.repo, tagId),
+		nil,
+	)
+	fatal(err)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("JWT %s", c.token))
+	resp, err := c.cli.Do(req)
+	fatal(err)
+
+	log.Debug("Delete resp:", resp.StatusCode)
+	if resp.StatusCode != 204 {
+		return errors.New(resp.Status)
+	}
+
 	return nil
 }
 
 func main() {
-	usage := `Usage:
-  dockerhub-tag create <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+	usage := `Manage Automated Builds on DockerHub
+
+Usage:
+  dockerhub-tag list   <dockerRepo>                                   [--verbose|-v]
+  dockerhub-tag add    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
+  dockerhub-tag set    <dockerRepo> <dockerTag> <gitTag> <location>   [--verbose|-v]
   dockerhub-tag delete <dockerRepo> <dockerTag>                       [--verbose|-v]
 
 Options:
@@ -169,11 +234,11 @@ Options:
 	dhc, err := NewClient(
 		os.Getenv("DOCKERHUB_USERNAME"),
 		os.Getenv("DOCKERHUB_PASSWORD"),
+		args["<dockerRepo>"].(string),
 	)
 
-	if args["create"].(bool) {
+	if args["add"].(bool) {
 		err = dhc.AddTag(
-			args["<dockerRepo>"].(string),
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
 			args["<location>"].(string),
@@ -183,15 +248,25 @@ Options:
 		}
 	}
 
-	if args["delete"].(bool) {
-		err = dhc.DeleteTag(
-			args["<repo>"].(string),
-			args["<tagname>"].(string),
+	if args["set"].(bool) {
+		err = dhc.AddSingleTag(
+			args["<dockerTag>"].(string),
+			args["<gitTag>"].(string),
+			args["<location>"].(string),
 		)
 		if err != nil {
-			log.Fatal("Cloudn't delete tag", err)
+			log.Fatal("Cloudn't create tag", err)
 		}
+	}
 
+	if args["list"].(bool) {
+		dhc.ListAll()
+	}
+
+	if args["delete"].(bool) {
+		dhc.DeleteTag(
+			args["<dockerTag>"].(string),
+		)
 	}
 
 }
