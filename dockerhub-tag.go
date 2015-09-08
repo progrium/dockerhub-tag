@@ -190,6 +190,23 @@ func (c *Client) DeleteTag(dockerTag string) error {
 	return nil
 }
 
+func (c *Client) triggerBuild() {
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/autobuild/trigger-build/", c.repo),
+		nil,
+	)
+	fatal(err)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("JWT %s", c.token))
+	resp, err := c.cli.Do(req)
+	fatal(err)
+
+	if resp.StatusCode != 201 {
+		log.Error("Coudnt trigger build:", resp.Status)
+	}
+}
+
 func (c *Client) deleteById(tagId int) error {
 
 	req, err := http.NewRequest(
@@ -246,6 +263,7 @@ Options:
 		if err != nil {
 			log.Fatal("Cloudn't create tag", err)
 		}
+		dhc.triggerBuild()
 	}
 
 	if args["set"].(bool) {
@@ -257,10 +275,15 @@ Options:
 		if err != nil {
 			log.Fatal("Cloudn't create tag", err)
 		}
+		dhc.triggerBuild()
 	}
 
 	if args["list"].(bool) {
 		dhc.ListAll()
+	}
+
+	if args["trigger"].(bool) {
+		dhc.triggerBuild()
 	}
 
 	if args["delete"].(bool) {
