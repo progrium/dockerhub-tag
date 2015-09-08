@@ -1,8 +1,14 @@
+machine:
+  services:
+    - docker
+
 dependencies:
   pre:
     - make deps
+    - glu circleci
   override:
-    - go build
+    - make build
+    - cp -r build/* $CIRCLE_ARTIFACTS
 
 deployment:
   release:
