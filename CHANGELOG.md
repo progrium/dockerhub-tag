@@ -2,12 +2,13 @@
 
 ### Fixed
 
-- pagination parsing added. The new api returns tags by groups of 10, providing a **next**/previous links.
+- pagination parsing added. The new api returns tags by groups of 10, providing a **next**/previous links
+- automatic build trigger added after successfull add/set
 
 ### Added
 
 - `list` command: diplays all automated builds in a table format
-- `add` command: simple adds a new git tag based automated build, without deleting any other automated build.
+- `add` command: simple adds a new git tag based automated build, without deleting any other automated build
 
 ### Removed
 
