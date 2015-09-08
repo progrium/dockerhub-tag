@@ -9,6 +9,12 @@ Docker images which aren’t automated builds, considered a security risk and th
 Please note that the main purpose of this tool is: to be able to create a new **automated** DockerHub build from cli,
 so it can be built easily integrated into any CI server/process.
 
+## Installation
+
+```
+go get github.com/progrium/dockerhub-tag
+```
+
 ## Usage
 
 ```

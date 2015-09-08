@@ -39,7 +39,7 @@ type Client struct {
 
 // NewClient creates a Client to https://hub.docker.com imitating a
 // user logging in, with a real browser.
-func NewClient(username, password, repository string) (*Client, error) {
+func NewClient(username, password, repository string) *Client {
 	c := &Client{
 		repo: repository,
 		cli:  new(http.Client),
@@ -58,7 +58,7 @@ func NewClient(username, password, repository string) (*Client, error) {
 	c.token = token["token"]
 	log.Debug("JWT:", c.token)
 
-	return c, nil
+	return c
 }
 
 func (c *Client) eachTag(f func(id int, name, sourceType, sourceName, dockerfileLoc string)) {
@@ -233,14 +233,20 @@ Options:
 		log.SetLevel(log.DebugLevel)
 	}
 
-	dhc, err := NewClient(
-		os.Getenv("DOCKERHUB_USERNAME"),
-		os.Getenv("DOCKERHUB_PASSWORD"),
+	username := os.Getenv("DOCKERHUB_USERNAME")
+	password := os.Getenv("DOCKERHUB_PASSWORD")
+
+	if username == "" || password == "" {
+		fatal(errors.New("Please set DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD"))
+	}
+	dhc := NewClient(
+		username,
+		password,
 		args["<dockerRepo>"].(string),
 	)
 
 	if args["add"].(bool) {
-		err = dhc.AddTag(
+		err := dhc.AddTag(
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
 			args["<location>"].(string),
@@ -251,7 +257,7 @@ Options:
 	}
 
 	if args["set"].(bool) {
-		err = dhc.AddSingleTag(
+		err := dhc.AddSingleTag(
 			args["<dockerTag>"].(string),
 			args["<gitTag>"].(string),
 			args["<location>"].(string),
