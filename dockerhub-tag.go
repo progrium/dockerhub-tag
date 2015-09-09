@@ -290,10 +290,6 @@ Options:
 		dhc.ListAll()
 	}
 
-	if args["trigger"].(bool) {
-		dhc.triggerBuild()
-	}
-
 	if args["delete"].(bool) {
 		dhc.DeleteTag(
 			args["<dockerTag>"].(string),
